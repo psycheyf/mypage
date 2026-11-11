@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>浙大校园合成小游戏</title>
+<style>
+*{
+  box-sizing: border-box;
+  font-family: "PingFang SC", "Microsoft Yahei", sans-serif;
+}
+body{
+  background: #f0f6ff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px;
+  margin: 0;
+  min-height: 100vh;
+}
+h2{
+  color: #0b3d91;
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: bold;
+  text-align:center;
+}
+.tip{
+  color: #3366aa;
+  margin-bottom:10px;
+  font-size:14px;
+  text-align:center;
+}
+#scoreInfo{
+  font-size: 18px;
+  color: #0b3d91;
+  font-weight: 600;
+  margin-bottom:12px;
+}
+#container{
+  position: relative;
+}
+#grid{
+  display: grid;
+  grid-template-columns: repeat(4, 70px);
+  gap: 8px;
+  background: #1557b0;
+  padding: 8px;
+  border-radius: 10px;
+}
+.cell{
+  width:70px;
+  height:70px;
+  background: #e4edfa;
+  border-radius: 8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:bold;
+  color:#0b3d91;
+  text-align:center;
+  user-select:none;
+}
+.cell-1{background:#d6e7ff;}
+.cell-2{background:#b8d6ff;}
+.cell-3{background:#9ac6ff;}
+.cell-4{background:#7cb6ff; color:#fff;}
+.cell-5{background:#4e98e8; color:#fff;}
+.cell-6{background:#0b3d91; color:#fff;}
+
+#restartBtn{
+  margin-top:14px;
+  padding:8px 18px;
+  background:#0b3d91;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  font-size:15px;
+}
+#gameOver{
+  position: fixed;
+  top:50%;
+  left:50%;
+  transform: translate(-50%,-50%);
+  background:#fff;
+  padding:24px 32px;
+  border-radius:10px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.2);
+  text-align:center;
+  display:none;
+  z-index:99;
+}
+#gameOver h3{
+  color:#0b3d91;
+  margin:0 0 10px;
+}
+#winTip{
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  display: none;
+  z-index: 100;
+  color: #0b3d91;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+  <h2>合成属于你的校园风景</h2>
+  <div class="tip">电脑：方向键｜手机：手指滑动</div>
+  <div id="scoreInfo">分数：<span id="score">0</span></div>
+  <div id="container">
+    <div id="grid"></div>
+  </div>
+  <button id="restartBtn">重新开始</button>
+
+  <div id="gameOver">
+    <h3>游戏结束</h3>
+    <p id="overText"></p >
+    <button id="restartBtn2">再来一局</button>
+  </div>
+  <div id="winTip">🎉 求是创新，启真厚德！</div>
+
+<script>
+const levelName = [
+  "南大门",
+  "启真湖",
+  "月牙楼",
+  "主图书馆",
+  "铜门楼",
+  "浙大全景"
+];
+const size = 4;
+let grid = [];
+let score = 0;
+let gameOver = false;
+let hasWin = false;
+
+const scoreDom = document.getElementById("score");
+const gridDom = document.getElementById("grid");
+const gameOverDom = document.getElementById("gameOver");
+const overText = document.getElementById("overText");
+const restartBtn = document.getElementById("restartBtn");
+const restartBtn2 = document.getElementById("restartBtn2");
+const winTip = document.getElementById("winTip");
+
+let touchStartX = 0;
+let touchStartY = 0;
+const minSwipe = 40;
+
+function initGame(){
+  score = 0;
+  gameOver = false;
+  hasWin = false;
+  grid = Array(size).fill().map(()=>Array(size).fill(0));
+  addRandom();
+  addRandom();
+  render();
+  gameOverDom.style.display = "none";
+  winTip.style.display = "none";
+}
+
+function addRandom(){
+  const empty = [];
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      if(grid[r][c] === 0){
+        empty.push({r,c});
+      }
+    }
+  }
+  if(empty.length === 0) return false;
+  const pos = empty[Math.floor(Math.random() * empty.length)];
+  grid[pos.r][pos.c] = 1;
+  return true;
+}
+
+function render(){
+  gridDom.innerHTML = "";
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      const val = grid[r][c];
+      const div = document.createElement("div");
+      div.className = "cell";
+      if(val > 0){
+        div.classList.add("cell-"+val);
+        div.innerText = levelName[val-1];
+      }
+      gridDom.appendChild(div);
+    }
+  }
+  scoreDom.innerText = score;
+}
+
+function slideLeft(){
+  let moved = false;
+  for(let r=0;r<size;r++){
+    let arr = [];
+    for(let c=0;c<size;c++){
+      if(grid[r][c] !== 0) arr.push(grid[r][c]);
+    }
+    for(let i=0;i<arr.length-1;i++){
+      if(arr[i] === arr[i+1]){
+        arr[i] += 1;
+        score += arr[i] * 10;
+        if(arr[i] === 6 && !hasWin){
+          hasWin = true;
+          winTip.style.display = "block";
+          setTimeout(()=>winTip.style.display = "none", 2200);
+        }
+        arr.splice(i+1, 1);
+      }
+    }
+    while(arr.length < size) arr.push(0);
+    for(let c=0;c<size;c++){
+      if(grid[r][c] !== arr[c]) moved = true;
+      grid[r][c] = arr[c];
+    }
+  }
+  return moved;
+}
+
+function transpose(){
+  let newG = Array(size).fill().map(()=>Array(size).fill(0));
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      newG[c][r] = grid[r][c];
+    }
+  }
+  grid = newG;
+}
+function reverseRow(){
+  for(let r=0;r<size;r++){
+    grid[r].reverse();
+  }
+}
+
+function move(dir){
+  if(gameOver) return;
+  let moved = false;
+  if(dir === "left"){
+    moved = slideLeft();
+  }else if(dir === "right"){
+    reverseRow();
+    moved = slideLeft();
+    reverseRow();
+  }else if(dir === "up"){
+    transpose();
+    moved = slideLeft();
+    transpose();
+  }else if(dir === "down"){
+    transpose();
+    reverseRow();
+    moved = slideLeft();
+    reverseRow();
+    transpose();
+  }
+  if(moved){
+    addRandom();
+    render();
+    checkGameOver();
+  }
+}
+
+function checkGameOver(){
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      if(grid[r][c] === 0) return;
+    }
+  }
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      const v = grid[r][c];
+      if(r+1 < size && grid[r+1][c] === v) return;
+      if(c+1 < size && grid[r][c+1] === v) return;
+    }
+  }
+  gameOver = true;
+  overText.innerText = "最终得分：" + score;
+  gameOverDom.style.display = "block";
+  render();
+}
+
+document.addEventListener("keydown", e=>{
+  if(gameOver) return;
+  switch(e.key){
+    case "ArrowLeft": move("left"); break;
+    case "ArrowRight": move("right"); break;
+    case "ArrowUp": move("up"); break;
+    case "ArrowDown": move("down"); break;
+  }
+})
+
+container.addEventListener("touchstart", (e)=>{
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, {passive:true});
+
+container.addEventListener("touchend", (e)=>{
+  if(gameOver) return;
+  const endX = e.changedTouches[0].clientX;
+  const endY = e.changedTouches[0].clientY;
+  const dx = endX - touchStartX;
+  const dy = endY - touchStartY;
+  if(Math.abs(dx) > Math.abs(dy)){
+    if(Math.abs(dx) > minSwipe){
+      if(dx > 0) move("right");
+      else move("left");
+    }
+  }else{
+    if(Math.abs(dy) > minSwipe){
+      if(dy > 0) move("down");
+      else move("up");
+    }
+  }
+}, {passive:true});
+
+restartBtn.onclick = ()=>{initGame();};
+restartBtn2.onclick = ()=>{initGame();};
+
+initGame();
+</script>
+</body>
+</html>
